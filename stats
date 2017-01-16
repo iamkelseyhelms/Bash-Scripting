@@ -1,0 +1,172 @@
+#!/bin/bash
+#
+# Author: Kelsey Helms
+# Date created: January 13, 2017
+# Filename: stats
+#
+# Overview: this program calculates stats on rows or columns
+
+###################################
+#           Variables             #
+###################################
+inputFile=""
+average=0
+median=0
+tempInputFile=$(mktemp)
+avTempFile=$(mktemp)
+medTempFile=$(mktemp)
+tempFile=$(mktemp)
+
+trap "rm -rf $tempInputFile $avTempFile $medTempFile $tempFile" INT HUP TERM EXIT
+
+###################################
+#           Functions             #
+###################################
+function errorStatus
+{
+    echo "$0 {-rows|-cols} [file]" 1>&2
+    exit 1
+}
+
+
+function readInput
+{
+    while read line
+    do
+        echo “$line” >> $tempInputFile
+    done < /dev/stdin
+    inputFile=$tempInputFile
+}
+
+
+function calculateAverage
+{
+    size=$1
+    sum=$2
+
+    if [[ $size == 0 ]]
+    then
+        average=""
+    else
+        average=$(($(($sum + $((size / 2)))) / $size))
+    fi
+}
+
+
+function calculateMedian
+{
+    values=$1
+    size=$2
+
+    echo $values | tr " " "\n" | sort -g > $tempFile
+    midNum=$(($size / 2 + 1))
+    median=$(awk 'NR=='$midNum'' $tempFile)
+}
+
+
+function rowsOption
+{
+    printf "Average\tMedian\n"
+    while read line
+    do
+        rowSize=($(echo $line | wc -w))
+
+        makeRowVert=$(echo $line | tr "\t" "\n")
+
+        rowSum=0
+        for i in $makeRowVert
+        do
+            rowSum=$(($i + $rowSum))
+        done
+
+        calculateAverage $rowSize $rowSum
+        calculateMedian "$makeRowVert" $rowSize
+
+        printf "$average\t$median\n"
+    done <$inputFile
+}
+
+
+function colsOption
+{
+    colSize=$(cut -c 1 $inputFile | wc -w)
+
+    firstLine=$(head -n 1 $inputFile)
+    numOfCols=($(echo $firstLine | wc -w))
+
+    for i in $(seq 1 $numOfCols)
+    do
+        values=$(cut -f $i $inputFile | tr "\t" "\n")
+
+        columnSum=0
+        for j in $values
+        do
+            columnSum=$(($j + $columnSum))
+        done
+
+        calculateAverage $colSize $columnSum
+        calculateMedian "$values" $colSize
+
+	if [ $i -eq 1 ]
+	then
+	    printf "$average" >> $avTempFile
+    	    printf "$median" >> $medTempFile
+	else
+ 	    sed -e "s/$/	$average/" -i $avTempFile
+	    sed -e "s/$/	$median/" -i $medTempFile
+	fi
+    done
+
+    if [[ -s $inputFile ]]
+    then
+        echo "Averages:"
+        cat $avTempFile
+        printf "\n"
+        echo "Medians:"
+        cat $medTempFile
+        printf "\n"
+	else
+        printf "Averages:\n"
+        printf "Medians:\n"
+    fi
+}
+
+
+###################################
+#             Main                #
+###################################
+if [[ $# -lt 1 || $# -gt 2 ]]
+then
+    errorStatus
+fi
+
+if [[ "$2" == "" ]]
+then
+    while read line
+    do
+        echo "$line" >> $tempInputFile
+    done
+    inputFile=$tempInputFile
+else
+    inputFile=$2
+fi
+
+if [[ ! -r $inputFile ]]
+then
+    echo "$0: cannot read $2" 1>&2
+    exit 1
+fi
+
+if [[ "$1" == -r* ]]
+then
+    rowsOption
+elif [[ "$1" == -c* ]]
+then
+    colsOption
+else
+    errorStatus
+fi
+
+rm -rf $tempInputFile $tempFile
+
+exit 0
