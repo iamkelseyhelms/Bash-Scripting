@@ -17,10 +17,9 @@ median=0    # median to be calculated
 tempInputFile=$(mktemp)    # temp file to read from stdin
 avTempFile=$(mktemp)    # temp file to hold averages
 medTempFile=$(mktemp)    # temp file to hold medians
-tempFile=$(mktemp)    # temp file to sort numbers in order to find median 
 
 # remove temp files
-trap "rm -rf $tempInputFile $avTempFile $medTempFile $tempFile" INT HUP TERM EXIT
+trap "rm -rf $tempInputFile $avTempFile $medTempFile" INT HUP TERM EXIT
 
 ###################################
 #           Functions             #
@@ -56,14 +55,14 @@ function calculateMedian
     values=$1
     size=$2
 
-    # sort values into temp file
-    echo $values | tr " " "\n" | sort -g > $tempFile
+    # sort values
+    sortNums=$(echo $values | tr " " "\n" | sort -g | tr "\n" " ")
 
     # find middle position
     midNum=$(($size / 2 + 1))
 
     #get number at middle position
-    median=$(awk 'NR=='$midNum'' $tempFile)
+    median=$(echo $sortNums | cut -d " " -f $midNum)
 }
 
 
@@ -139,8 +138,8 @@ function colsOption
 
         # appends any other averages and medians to temp files, including tabs
 	else
- 	    sed -e "s/$/	$average/" -i $avTempFile
-	    sed -e "s/$/	$median/" -i $medTempFile
+ 	    printf "	$average" >> $avTempFile
+	    printf "	$median" >> $medTempFile
 	fi
     done
 
@@ -212,7 +211,7 @@ else
 fi
 
 # delete the temporary files
-rm -rf $tempInputFile $avTempFile $medTempFile $tempFile
+rm -rf $tempInputFile $avTempFile $medTempFile
 
 # exit success!
 exit 0
