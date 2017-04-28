@@ -1,7 +1,7 @@
 #
 # Author: Kelsey Helms
 # Date Created: February 21, 2017
-# Filename: mypython.py
+# Filename: random.py
 #
 # Overview: This program randomly generates 10 lowercase letters,
 # prints them and adds them to files, randomly generates 2 numbers,
